@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Content",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "papers",
+    "topics",
+    "questions",
+    "explanations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "papers": { "type": "array", "items": { "$ref": "#/definitions/Paper" } },
+    "topics": { "type": "array", "items": { "$ref": "#/definitions/Topic" } },
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Question" }
+    },
+    "explanations": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Explanation" }
+    }
+  },
+  "definitions": {
+    "Paper": {
+      "title": "Paper",
+      "type": "object",
+      "required": [
+        "id",
+        "subjectId",
+        "title",
+        "year",
+        "examType",
+        "grade",
+        "round",
+        "booklet",
+        "sourceUrl",
+        "answerSourceUrl",
+        "answerStatus",
+        "questionCount"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "year": { "type": "integer" },
+        "heldOn": { "type": "string" },
+        "examType": { "enum": ["national", "local"] },
+        "grade": { "enum": [7, 9] },
+        "round": { "type": "string" },
+        "booklet": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "answerSourceUrl": { "type": "string" },
+        "answerStatus": { "enum": ["provisional", "final"] },
+        "questionCount": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string" },
+        "sourcePath": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Topic": {
+      "title": "Topic",
+      "type": "object",
+      "required": ["id", "subjectId", "title", "order"],
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "order": { "type": "integer" },
+        "parentId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Choice": {
+      "title": "Choice",
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "Question": {
+      "title": "Question",
+      "type": "object",
+      "required": [
+        "id",
+        "paperId",
+        "number",
+        "revision",
+        "topicId",
+        "stem",
+        "context",
+        "choices",
+        "answer",
+        "sourcePage",
+        "sourceVerified"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "paperId": { "type": "string" },
+        "number": { "type": "integer", "minimum": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "assessmentRevision": { "type": "integer", "minimum": 1 },
+        "topicId": { "type": "string" },
+        "stem": { "type": "string", "minLength": 1 },
+        "context": { "type": "string" },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/definitions/Choice" }
+        },
+        "answer": {
+          "type": "object",
+          "required": ["choices", "status"],
+          "properties": {
+            "choices": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string" }
+            },
+            "status": { "enum": ["final", "provisional", "cancelled"] }
+          },
+          "additionalProperties": false
+        },
+        "sourcePage": { "type": "integer", "minimum": 1 },
+        "sourceVerified": { "type": "boolean" },
+        "sourceAsset": { "type": "string" },
+        "contentHash": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Reference": {
+      "title": "Reference",
+      "type": "object",
+      "required": ["id", "label", "url", "kind", "checkedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "url": { "type": "string" },
+        "kind": { "enum": ["statute", "case", "official"] },
+        "article": { "type": "string" },
+        "caseNumber": { "type": "string" },
+        "effectiveDate": { "type": "string" },
+        "checkedAt": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Explanation": {
+      "title": "Explanation",
+      "type": "object",
+      "required": [
+        "questionId",
+        "status",
+        "legalStatus",
+        "checkedAt",
+        "summary",
+        "options",
+        "references"
+      ],
+      "properties": {
+        "questionId": { "type": "string" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["draft", "needs-review", "verified"] },
+        "legalStatus": { "enum": ["unreviewed", "unchanged", "changed"] },
+        "checkedAt": { "type": "string" },
+        "summary": { "type": "string" },
+        "currentNote": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["choiceId", "verdict", "text", "referenceIds"],
+            "properties": {
+              "choiceId": { "type": "string" },
+              "verdict": {
+                "enum": ["true", "false", "conditional", "unknown"]
+              },
+              "text": { "type": "string" },
+              "referenceIds": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Reference" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

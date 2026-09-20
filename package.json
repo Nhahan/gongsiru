@@ -1,0 +1,36 @@
+{
+  "name": "gongsiru",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run types:generate && tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "types:generate": "node tools/generate-types.mjs",
+    "test": "node --import tsx --test tests/*.test.mjs",
+    "check:public": "node tools/check-public.mjs",
+    "format": "prettier --write src tools tests schema docs index.html package.json tsconfig.json vite.config.ts",
+    "content:import": "node tools/content.mjs import",
+    "content:validate": "node tools/content.mjs validate",
+    "content:diff": "node tools/content.mjs diff",
+    "content:release": "node tools/content.mjs release",
+    "content:rollback": "node tools/content.mjs rollback"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "json-schema-to-typescript": "^16.0.0",
+    "prettier": "^3.9.8",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  }
+}
