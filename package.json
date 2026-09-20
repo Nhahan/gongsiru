@@ -12,6 +12,7 @@
     "check:public": "node tools/check-public.mjs",
     "format": "prettier --write src tools tests schema docs index.html package.json tsconfig.json vite.config.ts",
     "content:import": "node tools/content.mjs import",
+    "content:resolve": "node tools/content.mjs resolve",
     "content:validate": "node tools/content.mjs validate",
     "content:diff": "node tools/content.mjs diff",
     "content:release": "node tools/content.mjs release",

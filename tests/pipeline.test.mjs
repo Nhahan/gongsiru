@@ -108,6 +108,34 @@ test("import, release, manual revision, strict gate and rollback work end-to-end
       (await read(path.join(root, "content/questions/q.json"))).stem,
       current.stem,
     );
+    assert.throws(() => run("release", "--allow-unverified"));
+    run("resolve", "--item", "question:q", "--keep-local");
+    run("import");
+    assert.equal(
+      (await read(path.join(root, "content/questions/q.json"))).stem,
+      current.stem,
+    );
+    q.stem = "두 번째 외부 변경";
+    await write(path.join(root, "imported/questions/q.json"), q);
+    assert.throws(() => run("import"));
+    run("resolve", "--item", "question:q", "--use-incoming");
+    run("import");
+    assert.equal(
+      (await read(path.join(root, "content/questions/q.json"))).stem,
+      q.stem,
+    );
+    const papers = await read(path.join(root, "content/papers.json"));
+    papers[0].title = "수동 메타데이터";
+    await write(path.join(root, "content/papers.json"), papers);
+    p.title = "새 수입 메타데이터";
+    await write(path.join(root, "imported/papers.json"), [p]);
+    assert.throws(() => run("import"));
+    run("resolve", "--item", "metadata:papers", "--keep-local");
+    run("import");
+    assert.equal(
+      (await read(path.join(root, "content/papers.json")))[0].title,
+      "수동 메타데이터",
+    );
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

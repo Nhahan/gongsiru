@@ -57,6 +57,16 @@ node tools/verify-deployment.mjs
 
 원문은 `content/questions/`, 해설은 `content/explanations/`, 근거는 `content/references/`를 수정합니다. 수정 후 반드시 validate·diff를 실행합니다. 배포 시 이전 배포본과 비교하여 본문·정답 버전의 하한을 보정하므로 수동 수정도 학습 기록 갱신에서 누락되지 않습니다. 정규 JSON의 revision보다 배포판 revision이 높을 수 있습니다.
 
+충돌 항목과 새 입력은 개인 `reports/import-conflicts.json`, `reports/import-pending.json`에서 대조합니다. 결정한 뒤 다음 중 하나를 실행합니다. 해결 전에는 배포를 차단합니다.
+
+```sh
+npm run content:resolve -- --item question:문항ID --keep-local
+# 또는 새 수입본 채택(현재 편집본을 대체하므로 먼저 비교)
+npm run content:resolve -- --item question:문항ID --use-incoming
+```
+
+`explanation:문항ID`, `reference:출처ID`, `metadata:papers`도 같은 방식입니다. 로컬 유지로 결정하면 다음 입력 변경도 자동 덮어쓰지 않고 다시 충돌로 표시합니다. `--output`은 암호문을 다른 디렉터리로 내보내거나 격리 테스트할 때 사용하며 기본값은 `public/data`입니다.
+
 정답 없는 문항은 `answer.status=cancelled`, 잠정 답안은 `provisional`로 구분합니다. 최종답안이 발표되면 실제 공식표를 대조한 뒤 답안 상태·출처를 수정합니다. 과거 출제문은 현행법에 맞춰 바꾸지 않습니다. 현행법 변화는 해설의 `legalStatus=changed`와 `currentNote`에 따로 기록합니다.
 
 ## 검증 기준

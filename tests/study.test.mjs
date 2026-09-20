@@ -99,6 +99,11 @@ test("answer revision invalidates known/read but preserves marks and cycle", () 
   assert.deepEqual(next.cycleIds, s.cycleIds);
 });
 test("reading typography joins PDF linewraps, preserves case markers", () => {
+  assert.deepEqual(splitStem("질문?\nㄱ . 보기"), {
+    prompt: "질문?",
+    cases: "ㄱ . 보기",
+  });
+  assert.equal(readingText("ㄱ . 첫\n내용\nㄴ . 둘"), "ㄱ . 첫 내용\nㄴ . 둘");
   assert.equal(
     readingText("문장 앞\n문장 뒤\nㄱ. 첫\n내용\nㄴ. 둘"),
     "문장 앞 문장 뒤\nㄱ. 첫 내용\nㄴ. 둘",

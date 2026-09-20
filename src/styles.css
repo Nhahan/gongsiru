@@ -621,6 +621,11 @@ mark.pink {
 * {
   box-sizing: border-box;
 }
+.field input[type="file"] {
+  min-width: 0;
+  max-width: 65%;
+  font-size: 13px;
+}
 body {
   margin: 0;
 }

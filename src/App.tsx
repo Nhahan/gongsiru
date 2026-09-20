@@ -543,7 +543,7 @@ function Reader({
             </div>
           );
         })}
-        {state.mode === "single" ? (
+        {state.mode === "single" && entries.length > 0 ? (
           <div className="paging">
             <button
               className="outline-button"
@@ -737,7 +737,7 @@ function Reader({
                 [
                   ["hideAnswers", "정답·해설 가리기"],
                   ["collapseKnown", "익숙한 문항 접기"],
-                  ["onlyHighlights", "형광펜 표시한 부분만 보기"],
+                  ["onlyHighlights", "형광펜 있는 문단만 보기"],
                 ] as const
               ).map(([k, label]) => (
                 <label className="check" key={k}>

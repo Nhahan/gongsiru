@@ -146,10 +146,10 @@ async function importContent() {
         ),
       ),
   );
-  await write(path.join(data, "papers.json"), papers);
   const statePath = path.join(root, "import-state.json"),
     state = (await exists(statePath)) ? await read(statePath) : {},
-    conflicts = [];
+    conflicts = [],
+    pending = {};
   let manualTopics = {};
   for (const folder of ["national9", "local9", "national7", "local7"]) {
     const p = path.join(root, "research", folder, "topics.json");
@@ -170,15 +170,18 @@ async function importContent() {
       const current = await read(file);
       if (
         state[key] &&
-        (await sha256(JSON.stringify(current))) !== state[key].stored
+        (state[key].locked ||
+          (await sha256(JSON.stringify(current))) !== state[key].stored)
       ) {
         conflicts.push(key);
+        pending[key] = incoming;
         return;
       }
     }
     await write(file, incoming);
     state[key] = { incoming: h, stored: h };
   }
+  await mergeFile(path.join(data, "papers.json"), papers, "metadata:papers");
   for (const raw of await objects(path.join(root, "imported/questions"))) {
     assertSafeId(raw.id);
     const oldPath = path.join(data, "questions", raw.id + ".json");
@@ -274,11 +277,12 @@ async function importContent() {
   }
   await write(statePath, state);
   await write(path.join(root, "reports/import-conflicts.json"), conflicts);
+  await write(path.join(root, "reports/import-pending.json"), pending);
   if (!(await exists(path.join(root, ".git")))) {
     execFileSync("git", ["init", "-q", root]);
     await fs.writeFile(
       path.join(root, ".gitignore"),
-      "secrets/\nimported/\nreleases/\noriginals/\n*.key\n*.tmp\n",
+      "secrets/\nimported/\nreleases/\noriginals/\nreports/\n.playwright-cli/\n__pycache__/\n*.pyc\n*.key\n*.tmp\n",
     );
   }
   console.log(
@@ -292,6 +296,58 @@ async function importContent() {
     throw Error(
       "편집본과 충돌합니다. 비공개 reports/import-conflicts.json을 확인하세요.",
     );
+}
+async function resolveConflict() {
+  const item = arg("item"),
+    keep = args.includes("--keep-local"),
+    incoming = args.includes("--use-incoming");
+  if (!item || keep === incoming)
+    throw Error(
+      "--item 식별자와 --keep-local 또는 --use-incoming을 지정하세요.",
+    );
+  const pendingFile = path.join(root, "reports/import-pending.json"),
+    pending = await read(pendingFile);
+  if (!Object.hasOwn(pending, item))
+    throw Error("해당 충돌이 없습니다. import를 다시 확인하세요.");
+  const [kind, id, ...rest] = item.split(":");
+  if (rest.length) throw Error("잘못된 항목");
+  assertSafeId(id);
+  const directories = {
+    question: "questions",
+    explanation: "explanations",
+    reference: "references",
+  };
+  const file =
+    kind === "metadata" && id === "papers"
+      ? path.join(data, "papers.json")
+      : directories[kind]
+        ? path.join(data, directories[kind], id + ".json")
+        : null;
+  if (!file) throw Error("지원하지 않는 항목");
+  const local = await read(file),
+    stateFile = path.join(root, "import-state.json"),
+    state = await read(stateFile);
+  const selected = keep ? local : pending[item];
+  if (!keep) await write(file, selected);
+  state[item] = {
+    incoming: await sha256(JSON.stringify(pending[item])),
+    stored: await sha256(JSON.stringify(selected)),
+    locked: keep,
+  };
+  delete pending[item];
+  await write(stateFile, state);
+  await write(pendingFile, pending);
+  await write(
+    path.join(root, "reports/import-conflicts.json"),
+    Object.keys(pending),
+  );
+  console.log(
+    JSON.stringify({
+      resolved: item,
+      selection: keep ? "local" : "incoming",
+      remaining: Object.keys(pending).length,
+    }),
+  );
 }
 async function load() {
   const refs = new Map(
@@ -507,6 +563,9 @@ export async function normalizeRevisions(content, before) {
   return content;
 }
 async function release(content) {
+  const conflicts = path.join(root, "reports/import-conflicts.json");
+  if ((await exists(conflicts)) && (await read(conflicts)).length)
+    throw Error("미해결 수입 충돌이 있습니다. content:resolve 후 배포하세요.");
   const prior = path.join(root, "releases/latest-source.json");
   await normalizeRevisions(
     content,
@@ -629,6 +688,7 @@ if (
 ) {
   try {
     if (command === "import") await importContent();
+    else if (command === "resolve") await resolveConflict();
     else if (command === "rollback") await rollback();
     else {
       const content = await load();
@@ -636,7 +696,8 @@ if (
         await validate(content, { strict: args.includes("--strict") });
       else if (command === "diff") await diff(content);
       else if (command === "release") await release(content);
-      else throw Error("import | validate | diff | release | rollback");
+      else
+        throw Error("import | resolve | validate | diff | release | rollback");
     }
   } catch (e) {
     console.error(e.message);

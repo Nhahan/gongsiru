@@ -205,30 +205,43 @@ export default function QuestionView({
                     </button>
                   ) : (
                     <>
-                      {e.summary && (
-                        <p>{renderText(e.summary, "explanation:summary")}</p>
-                      )}
+                      {e.summary &&
+                        (!markedOnly || hasMark("explanation:summary")) && (
+                          <p>{renderText(e.summary, "explanation:summary")}</p>
+                        )}
                       <div className="option-explanations">
-                        {e.options.map((o) => (
-                          <div className="option-explanation" key={o.choiceId}>
-                            <div className="option-heading">
-                              <span>{choiceLabel(o.choiceId)}</span>
-                              <span className="verdict">
-                                {
+                        {e.options
+                          .filter(
+                            (o) =>
+                              !markedOnly ||
+                              hasMark(`explanation:${o.choiceId}`),
+                          )
+                          .map((o) => (
+                            <div
+                              className="option-explanation"
+                              key={o.choiceId}
+                            >
+                              <div className="option-heading">
+                                <span>{choiceLabel(o.choiceId)}</span>
+                                <span className="verdict">
                                   {
-                                    true: "옳은 내용",
-                                    false: "옳지 않은 내용",
-                                    conditional: "조건 확인",
-                                    unknown: "판단 검토 중",
-                                  }[o.verdict]
-                                }
-                              </span>
+                                    {
+                                      true: "옳은 내용",
+                                      false: "옳지 않은 내용",
+                                      conditional: "조건 확인",
+                                      unknown: "판단 검토 중",
+                                    }[o.verdict]
+                                  }
+                                </span>
+                              </div>
+                              <p>
+                                {renderText(
+                                  o.text,
+                                  `explanation:${o.choiceId}`,
+                                )}
+                              </p>
                             </div>
-                            <p>
-                              {renderText(o.text, `explanation:${o.choiceId}`)}
-                            </p>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                       {e.currentNote && e.legalStatus !== "changed" && (
                         <p className="small-notice">{e.currentNote}</p>
