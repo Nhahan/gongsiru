@@ -41,6 +41,7 @@ export default function QuestionView({
 }) {
   const [expanded, setExpanded] = useState(false),
     [showAll, setShowAll] = useState(false),
+    [showDraft, setShowDraft] = useState(false),
     [reveal, setReveal] = useState(false);
   const record = state.records[q.id] || {
     state: "keep",
@@ -195,57 +196,72 @@ export default function QuestionView({
                       ? " · 현행법 대조 미완료"
                       : ""}
                   </div>
-                  {e.summary && (
-                    <p>{renderText(e.summary, "explanation:summary")}</p>
-                  )}
-                  <div className="option-explanations">
-                    {e.options.map((o) => (
-                      <div className="option-explanation" key={o.choiceId}>
-                        <div className="option-heading">
-                          <span>{choiceLabel(o.choiceId)}</span>
-                          <span className="verdict">
-                            {
-                              {
-                                true: "옳은 내용",
-                                false: "옳지 않은 내용",
-                                conditional: "조건 확인",
-                                unknown: "판단 검토 중",
-                              }[o.verdict]
-                            }
-                          </span>
-                        </div>
-                        <p>{renderText(o.text, `explanation:${o.choiceId}`)}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {e.currentNote && e.legalStatus !== "changed" && (
-                    <p className="small-notice">{e.currentNote}</p>
-                  )}
-                  {e.references.length > 0 && (
-                    <details className="references">
-                      <summary>법령·판례 근거 {e.references.length}건</summary>
-                      <ul>
-                        {e.references.map((r) => (
-                          <li key={r.id}>
-                            <a
-                              href={safeUrl(r.url)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {r.label}
-                            </a>
-                            {r.article && <span> · {r.article}</span>}
-                            {r.caseNumber && <span> · {r.caseNumber}</span>}
-                            <small>
-                              {r.effectiveDate
-                                ? `시행 ${r.effectiveDate} · `
-                                : ""}
-                              확인 {r.checkedAt}
-                            </small>
-                          </li>
+                  {e.status !== "verified" && !showDraft ? (
+                    <button
+                      className="outline-button"
+                      onClick={() => setShowDraft(true)}
+                    >
+                      검토 중 해설 펼치기
+                    </button>
+                  ) : (
+                    <>
+                      {e.summary && (
+                        <p>{renderText(e.summary, "explanation:summary")}</p>
+                      )}
+                      <div className="option-explanations">
+                        {e.options.map((o) => (
+                          <div className="option-explanation" key={o.choiceId}>
+                            <div className="option-heading">
+                              <span>{choiceLabel(o.choiceId)}</span>
+                              <span className="verdict">
+                                {
+                                  {
+                                    true: "옳은 내용",
+                                    false: "옳지 않은 내용",
+                                    conditional: "조건 확인",
+                                    unknown: "판단 검토 중",
+                                  }[o.verdict]
+                                }
+                              </span>
+                            </div>
+                            <p>
+                              {renderText(o.text, `explanation:${o.choiceId}`)}
+                            </p>
+                          </div>
                         ))}
-                      </ul>
-                    </details>
+                      </div>
+                      {e.currentNote && e.legalStatus !== "changed" && (
+                        <p className="small-notice">{e.currentNote}</p>
+                      )}
+                      {e.references.length > 0 && (
+                        <details className="references">
+                          <summary>
+                            법령·판례 근거 {e.references.length}건
+                          </summary>
+                          <ul>
+                            {e.references.map((r) => (
+                              <li key={r.id}>
+                                <a
+                                  href={safeUrl(r.url)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {r.label}
+                                </a>
+                                {r.article && <span> · {r.article}</span>}
+                                {r.caseNumber && <span> · {r.caseNumber}</span>}
+                                <small>
+                                  {r.effectiveDate
+                                    ? `시행 ${r.effectiveDate} · `
+                                    : ""}
+                                  확인 {r.checkedAt}
+                                </small>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -255,7 +271,7 @@ export default function QuestionView({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  공식 문제 원문
+                  공식 문제 원문 · {q.sourcePage}쪽
                 </a>
                 <a
                   href={safeUrl(p.answerSourceUrl)}

@@ -48,6 +48,9 @@ npm run content:release -- --allow-unverified
 npm run check:public
 npm test
 npm run build
+
+# 실제 사이트에서 모든 암호문을 내려받아 로컬에서 복호화·개수 검사
+node tools/verify-deployment.mjs
 ```
 
 `content:import`는 같은 입력에 재실행할 수 있습니다. 정규 파일을 수동 편집한 상태에서 수입 내용도 바뀌면 덮어쓰지 않고 충돌 보고서를 생성합니다. 변경한 정규 파일을 유지할지 새 수입본을 채택할지 직접 대조해 결정하세요. 공통 출처의 표시 이름은 정렬상 첫 입력을 사용합니다. 독립적인 근거라면 다른 조문/사건번호/시행일을 지정해야 합니다.

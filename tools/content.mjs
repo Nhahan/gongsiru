@@ -11,16 +11,37 @@ function arg(name, fallback) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : fallback;
 }
-const root = path.resolve(
-  arg(
-    "root",
-    process.env.GONGSIRU_CONTENT_ROOT || path.join(repo, "../gongsiru-private"),
+async function realTarget(target) {
+  try {
+    return await fs.realpath(target);
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+    const parent = path.dirname(target);
+    if (parent === target) throw e;
+    return path.join(await realTarget(parent), path.basename(target));
+  }
+}
+const root = await realTarget(
+  path.resolve(
+    arg(
+      "root",
+      process.env.GONGSIRU_CONTENT_ROOT ||
+        path.join(repo, "../gongsiru-private"),
+    ),
   ),
 );
 if (root === repo || root.startsWith(repo + path.sep))
   throw Error("비공개 자료는 공개 저장소 밖에 두어야 합니다.");
 const data = path.join(root, "content"),
-  pub = path.join(repo, "public/data");
+  pub = path.resolve(arg("output", path.join(repo, "public/data")));
+export function assertSafeId(id) {
+  if (
+    typeof id !== "string" ||
+    id.length > 200 ||
+    !/^[-\p{L}\p{N}_]+$/u.test(id)
+  )
+    throw Error("파일 식별자 형식이 안전하지 않습니다.");
+}
 const read = async (p) => JSON.parse(await fs.readFile(p, "utf8"));
 async function exists(p) {
   try {
@@ -159,6 +180,7 @@ async function importContent() {
     state[key] = { incoming: h, stored: h };
   }
   for (const raw of await objects(path.join(root, "imported/questions"))) {
+    assertSafeId(raw.id);
     const oldPath = path.join(data, "questions", raw.id + ".json");
     const old = (await exists(oldPath)) ? await read(oldPath) : null;
     const q = Object.fromEntries(
@@ -198,6 +220,7 @@ async function importContent() {
   }
   const importedRefs = new Set();
   for (const raw of await objects(path.join(root, "explanations"))) {
+    assertSafeId(raw.questionId);
     const mapped = new Map();
     const refs = [];
     for (const r of raw.references || []) {
@@ -433,8 +456,8 @@ async function diff(content) {
   return report;
 }
 async function key() {
-  const keyFile = path.resolve(
-    arg("key-file", path.join(root, "secrets/content.key")),
+  const keyFile = await realTarget(
+    path.resolve(arg("key-file", path.join(root, "secrets/content.key"))),
   );
   if (keyFile.startsWith(repo + path.sep))
     throw Error("키는 저장소 밖에 보관하세요.");
