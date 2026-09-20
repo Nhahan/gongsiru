@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import Ajv from "ajv";
 import { encryptJson, newKey, sha256 } from "../src/lib/crypto.mjs";
+import { applySourceReview } from "./source-review.mjs";
+import { auditReviewEvidence } from "./review-evidence.mjs";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2),
   command = args.shift();
@@ -182,7 +184,24 @@ async function importContent() {
     state[key] = { incoming: h, stored: h };
   }
   await mergeFile(path.join(data, "papers.json"), papers, "metadata:papers");
-  for (const raw of await objects(path.join(root, "imported/questions"))) {
+  const sourceReviews = new Map();
+  for (const grade of ["grade9", "grade7"]) {
+    const file = path.join(root, "research/source-review", grade + ".json");
+    if (!(await exists(file))) continue;
+    for (const review of await read(file)) {
+      if (sourceReviews.has(review.questionId))
+        throw Error("중복 원문 검토: " + review.questionId);
+      sourceReviews.set(review.questionId, review);
+    }
+  }
+  for (const extracted of await objects(
+    path.join(root, "imported/questions"),
+  )) {
+    const raw = await applySourceReview(
+      extracted,
+      papers.find((p) => p.id === extracted.paperId),
+      sourceReviews.get(extracted.id),
+    );
     assertSafeId(raw.id);
     const oldPath = path.join(data, "questions", raw.id + ".json");
     const old = (await exists(oldPath)) ? await read(oldPath) : null;
@@ -441,6 +460,7 @@ async function validate(content, { strict = false } = {}) {
   if (!valid(content))
     errors.push(...valid.errors.map((e) => `${e.instancePath}: ${e.message}`));
   if (!errors.length) errors.push(...checkIntegrity(content));
+  if (strict) errors.push(...(await auditReviewEvidence(root, content)));
   const stats = {
     papers: content.papers.length,
     questions: content.questions.length,

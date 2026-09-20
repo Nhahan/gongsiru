@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decryptJson, sha256 } from "../src/lib/crypto.mjs";
 import { checkIntegrity } from "./content.mjs";
+import { auditReviewEvidence } from "./review-evidence.mjs";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const root =
   process.env.GONGSIRU_CONTENT_ROOT ||
@@ -10,7 +11,11 @@ const root =
 const secret = (
   await fs.readFile(path.join(root, "secrets/content.key"), "utf8")
 ).trim();
-const base = new URL(process.argv[2] || "https://nhahan.github.io/gongsiru/");
+const argv = process.argv.slice(2);
+const strict = argv.includes("--strict");
+const base = new URL(
+  argv.find((a) => !a.startsWith("--")) || "https://nhahan.github.io/gongsiru/",
+);
 if (
   base.protocol !== "https:" ||
   base.hash ||
@@ -62,13 +67,33 @@ if (
   checkIntegrity(content).length
 )
   throw Error("배포 콘텐츠 무결성 검사 실패");
+const sourceVerified = content.questions.filter((q) => q.sourceVerified).length;
+const verified = content.explanations.filter(
+  (e) => e.status === "verified",
+).length;
+if (verified !== catalog.counts.verified) throw Error("해설 검증 집계 불일치");
+if (strict) {
+  const expected = JSON.parse(
+    await fs.readFile(path.join(repo, "public/data/current.json"), "utf8"),
+  );
+  if (pointer.id !== expected.id || pointer.sha256 !== expected.sha256)
+    throw Error("최신 배포판이 아직 반영되지 않았습니다.");
+  if (
+    sourceVerified !== content.questions.length ||
+    verified !== content.questions.length ||
+    (await auditReviewEvidence(root, content)).length
+  )
+    throw Error("배포본 전체 검증 기록 불일치");
+}
 console.log(
   JSON.stringify({
     site: base.href,
     papers: content.papers.length,
     questions: content.questions.length,
     explanations: content.explanations.length,
-    verified: catalog.counts.verified,
+    verified,
+    sourceVerified,
+    release: pointer.id,
     decryption: "passed",
     integrity: "passed",
   }),

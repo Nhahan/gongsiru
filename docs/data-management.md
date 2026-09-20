@@ -10,6 +10,8 @@
   imported/questions/*.json    PDF에서 추출한 문항
   explanations/*.json          출처를 포함한 해설 입력
   research/<분류>/topics.json   문항 ID → 단원 ID
+  research/<분류>/verification.json 선지별 공식 근거·현행법 검토 기록
+  research/source-review/grade{7,9}.json 원본 이미지 대조·교정 기록
   content/
     papers.json, topics.json
     questions/<문항 ID>.json    편집 가능한 정규 원문
@@ -33,7 +35,7 @@
 npm run content:import
 
 # 2. 누락·중복·답지·근거 연결 검사
-npm run content:validate
+npm run content:validate -- --strict
 
 # 3. 내용·정답·분류·해설 변경 확인
 npm run content:diff
@@ -50,12 +52,12 @@ npm test
 npm run build
 
 # 실제 사이트에서 모든 암호문을 내려받아 로컬에서 복호화·개수 검사
-node tools/verify-deployment.mjs
+node tools/verify-deployment.mjs --strict
 ```
 
 `content:import`는 같은 입력에 재실행할 수 있습니다. 정규 파일을 수동 편집한 상태에서 수입 내용도 바뀌면 덮어쓰지 않고 충돌 보고서를 생성합니다. 변경한 정규 파일을 유지할지 새 수입본을 채택할지 직접 대조해 결정하세요. 공통 출처의 표시 이름은 정렬상 첫 입력을 사용합니다. 독립적인 근거라면 다른 조문/사건번호/시행일을 지정해야 합니다.
 
-원문은 `content/questions/`, 해설은 `content/explanations/`, 근거는 `content/references/`를 수정합니다. 수정 후 반드시 validate·diff를 실행합니다. 배포 시 이전 배포본과 비교하여 본문·정답 버전의 하한을 보정하므로 수동 수정도 학습 기록 갱신에서 누락되지 않습니다. 정규 JSON의 revision보다 배포판 revision이 높을 수 있습니다.
+검토 작업의 원문 교정은 `research/source-review/`의 `corrected`에, 해설은 `explanations/`에 반영한 뒤 다시 수입합니다. 정규 파일을 직접 수정할 수도 있지만, 정식 배포에서는 검토본과 정규 파일이 일치해야 합니다. 수정 후 반드시 validate·diff를 실행합니다. 배포 시 이전 배포본과 비교하여 본문·정답 버전의 하한을 보정하므로 수동 수정도 학습 기록 갱신에서 누락되지 않습니다. 정규 JSON의 revision보다 배포판 revision이 높을 수 있습니다.
 
 충돌 항목과 새 입력은 개인 `reports/import-conflicts.json`, `reports/import-pending.json`에서 대조합니다. 결정한 뒤 다음 중 하나를 실행합니다. 해결 전에는 배포를 차단합니다.
 
@@ -73,13 +75,17 @@ npm run content:resolve -- --item question:문항ID --use-incoming
 
 | 필드                     | 뜻                                            |
 | ------------------------ | --------------------------------------------- |
-| `sourceVerified`         | 원본 문항을 사람 기준으로 대조 완료           |
+| `sourceVerified`         | 원본 이미지와 문항의 내용 대조 완료           |
 | `status=needs-review`    | 해설 초안, 근거/법리의 추가 검토 필요         |
 | `status=verified`        | 모든 선택지 설명·개별 근거와 현행법 검토 완료 |
 | `legalStatus=unreviewed` | 현재 적용되는 법령·판례와 대조 미완료         |
 | `legalStatus=changed`    | 과거와 현재 판단이 달라질 수 있음             |
 
-자동 검사는 법률 해설의 진실성을 증명하지 않습니다. `verified`는 모든 선택지·근거 연결·확인일·현행법 상태를 요구하지만, 실제 공식 법령·판례 읽기는 별도 사람 검토입니다. 답만 보고 나머지 선택지를 모두 거짓으로 표시하면 안 됩니다. 조합형은 개별 보기와 답지 조합을 구분하세요.
+자동 검사는 법률 해설의 진실성을 증명하지 않습니다. `verified`는 모든 선택지·근거 연결·확인일·현행법 상태를 요구하지만, 실제 공식 법령·판례를 읽고 판단하는 내용 검토는 별도로 수행해야 합니다. AI가 검토한 자료를 사람이나 법률전문가가 감수했다고 표시하지 않습니다. 답만 보고 나머지 선택지를 모두 거짓으로 표시하면 안 됩니다. 조합형은 개별 보기와 답지 조합을 구분하세요.
+
+`content:validate -- --strict`와 정식 배포는 검토 기록까지 대조합니다. `sourceVerified`를 직접 켜는 것으로는 통과하지 않습니다. 원문 기록은 문항 ID, PDF 해시, 검토 페이지, 확인일, `method=rendered-pdf-visual`, 대조 메모와 `sourceContentHash`를 보존합니다. 이 해시는 `SHA256(JSON.stringify([raw.stem, raw.context || '', raw.choices]))`입니다. 교정 가능한 필드는 `stem`, `context`, `choices`뿐이며 답안과 문항 식별자는 교정 기록으로 바꿀 수 없습니다.
+
+해설 기록은 문항 ID·확인일·`optionEvidence`·`currentLawCheck`·`explanationHash`를 보존합니다. 모든 선지에 실제 읽은 근거 ID와 적용 이유가 있어야 합니다. 해설 해시는 `SHA256(JSON.stringify(rawExplanation))`이며, 근거 ID는 수입 전 해설 파일의 ID를 사용합니다. 해설을 수정하면 해당 검토도 갱신해야 합니다. 검토 기록은 비공개 공간에 남고 사이트에는 포함하지 않습니다.
 
 ## 롤백과 백업
 
